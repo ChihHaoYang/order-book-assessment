@@ -34,6 +34,10 @@ export default function Home() {
   const [messageList, setMessageList] = useState<MessageEvent<any>[]>([]);
   const [bids, setBids] = useState<[string, string][]>([]);
   const [asks, setAsks] = useState<[string, string][]>([]);
+  const [showedPrice, setShowedPrice] = useState<{ [key: string]: boolean }>(
+    {}
+  );
+  const seqNum = useRef<number | null>(null);
   const [lastPrice, setLastPrice] = useState<number>(0);
   const [lastPriceChange, setLastPriceChange] = useState<
     'high' | 'low' | 'same'
@@ -104,10 +108,65 @@ export default function Home() {
         const { data } = parsedMessage as OrderBookResponse;
         switch (data.type) {
           case 'snapshot':
+            const initialShowed: {
+              [key: string]: boolean;
+            } = [...data.bids.slice(0, 9), ...data.asks.slice(0, 9)].reduce(
+              (acc, current) => {
+                acc[current[0]] = true;
+                return acc;
+              },
+              {} as { [key: string]: boolean }
+            );
+            setShowedPrice(initialShowed);
             setBids(data.bids);
             setAsks(data.asks);
+
             break;
           case 'delta':
+            if (!seqNum.current) {
+              seqNum.current = data.seqNum;
+            } else if (seqNum.current !== data.prevSeqNum) {
+              orderBookSocket.sendJsonMessage({
+                op: 'unsubscribe',
+                args: ['update:BTCPFC_0']
+              });
+              orderBookSocket.sendJsonMessage({
+                op: 'subscribe',
+                args: ['update:BTCPFC_0']
+              });
+            } else {
+              const newBids = [...bids];
+              const newAsks = [...asks];
+              for (const deltaB of data.bids) {
+                for (const bid of newBids) {
+                  if (deltaB[0] === bid[0]) {
+                    bid[1] = deltaB[1];
+                    break;
+                  } else if (+deltaB[0] > +bid[0]) {
+                    newBids.push(deltaB);
+                    break;
+                  }
+                }
+              }
+              setBids(
+                newBids.filter(e => e[1] !== '0').sort((a, b) => +b[0] - +a[0])
+              );
+
+              for (const deltaA of data.asks) {
+                for (const ask of newAsks) {
+                  if (deltaA[0] === ask[0]) {
+                    ask[1] = deltaA[1];
+                    break;
+                  } else if (+deltaA[0] > +ask[0]) {
+                    newBids.push(deltaA);
+                    break;
+                  }
+                }
+              }
+              setBids(
+                newAsks.filter(e => e[1] !== '0').sort((a, b) => +b[0] - +a[0])
+              );
+            }
             break;
         }
         break;

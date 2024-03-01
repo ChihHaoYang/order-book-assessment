@@ -33,6 +33,20 @@ const config: Config = {
         'last-p-same': '#f0f4f8',
         'last-p-high': '#00b15d',
         'last-p-low': '#ff5b5a'
+      },
+      keyframes: {
+        greenFlash: {
+          '0%': { backgroundColor: 'rgba(0, 177, 93, 0.5)' },
+          '100%': { backgroundColor: 'none' }
+        },
+        redFlash: {
+          '0%': { backgroundColor: 'rgba(255, 91, 90, 0.5)' },
+          '100%': { backgroundColor: 'none' }
+        }
+      },
+      animation: {
+        'green-flash': 'greenFlash 0.5s linear 0s 1',
+        'red-flash': 'redFlash 0.5s linear 0s 1'
       }
     }
   },
