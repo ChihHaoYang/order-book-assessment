@@ -1,13 +1,16 @@
 import React from 'react';
 import Image from 'next/image';
+import { Roboto_Mono } from 'next/font/google';
 import { formatNumber } from '../utils';
 
-type PriceRowProps = {
+const robotoMono = Roboto_Mono({ subsets: ['latin'] });
+
+type LastPriceProps = {
   price: number;
   change: 'same' | 'high' | 'low';
 };
 
-const LastPrice = ({ price, change }: PriceRowProps) => {
+const LastPrice = ({ price, change }: LastPriceProps) => {
   const cellClass: string = {
     same: 'text-last-p-same bg-last-p-same',
     low: 'text-last-p-low bg-last-p-low',
@@ -57,7 +60,9 @@ const LastPrice = ({ price, change }: PriceRowProps) => {
         className={`text-default text-lg text-center ${cellClass}`}
         colSpan={3}
       >
-        <div className='flex justify-center items-center font-bold'>
+        <div
+          className={`flex justify-center items-center font-bold ${robotoMono.className}`}
+        >
           {formatNumber(price, 1)}
           <div className='ml-1'>{renderIcon()}</div>
         </div>
