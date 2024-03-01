@@ -67,6 +67,7 @@ export default function Home() {
     sendJsonMessage({ op: 'subscribe', args: ['update:BTCPFC_0'] });
     return () => {
       sendJsonMessage({ op: 'unsubscribe', args: ['update:BTCPFC_0'] });
+      orderBookSocket.getWebSocket()?.close();
     };
   }, []);
 
@@ -77,6 +78,9 @@ export default function Home() {
       op: 'subscribe',
       args: ['tradeHistoryApi:BTCPFC']
     });
+    return () => {
+      lastPriceSocket.getWebSocket()?.close();
+    };
   }, []);
 
   function handleOnMessage(message: MessageEvent<any>) {
@@ -118,22 +122,6 @@ export default function Home() {
         <table className='border-spacing-1.5 border-separate border-spacing-x-0'>
           <OrderBookHead />
           <tbody className='text-sm'>
-            {bids.slice(0, 9).map((bid, index, arr) => {
-              const total = arr.slice(index).reduce((acc, curr) => {
-                acc += parseInt(curr[1]);
-                return acc;
-              }, 0);
-              return (
-                <PriceRow
-                  key={bid[0]}
-                  price={+bid[0]}
-                  size={+bid[1]}
-                  total={total}
-                  type='sell'
-                />
-              );
-            })}
-            <LastPrice price={lastPrice} change={lastPriceChange} />
             {asks.slice(0, 9).map((ask, index, arr) => {
               const total = arr.slice(index).reduce((acc, curr) => {
                 acc += parseInt(curr[1]);
@@ -145,7 +133,25 @@ export default function Home() {
                   price={+ask[0]}
                   size={+ask[1]}
                   total={total}
+                  type='sell'
+                  flash={showedPrice[ask[0]]}
+                />
+              );
+            })}
+            <LastPrice price={lastPrice} change={lastPriceChange} />
+            {bids.slice(0, 9).map((bid, index, arr) => {
+              const total = arr.slice(index).reduce((acc, curr) => {
+                acc += parseInt(curr[1]);
+                return acc;
+              }, 0);
+              return (
+                <PriceRow
+                  key={bid[0]}
+                  price={+bid[0]}
+                  size={+bid[1]}
+                  total={total}
                   type='buy'
+                  flash={showedPrice[bid[0]]}
                 />
               );
             })}
