@@ -100,8 +100,8 @@ export default function Home() {
         const { data } = parsedMessage as OrderBookResponse;
         switch (data.type) {
           case 'snapshot':
-            setBids(data.bids.slice(0, 9));
-            setAsks(data.asks.slice(0, 9));
+            setBids(data.bids);
+            setAsks(data.asks);
             break;
           case 'delta':
             break;
@@ -118,25 +118,37 @@ export default function Home() {
         <table className='border-spacing-1.5 border-separate border-spacing-x-0'>
           <OrderBookHead />
           <tbody className='text-sm'>
-            {bids.map(bid => (
-              <PriceRow
-                key={bid[0]}
-                price={+bid[0]}
-                size={+bid[1]}
-                total={+bid[1]}
-                type='sell'
-              />
-            ))}
+            {bids.slice(0, 9).map((bid, index, arr) => {
+              const total = arr.slice(index).reduce((acc, curr) => {
+                acc += parseInt(curr[1]);
+                return acc;
+              }, 0);
+              return (
+                <PriceRow
+                  key={bid[0]}
+                  price={+bid[0]}
+                  size={+bid[1]}
+                  total={total}
+                  type='sell'
+                />
+              );
+            })}
             <LastPrice price={lastPrice} change={lastPriceChange} />
-            {asks.map(ask => (
-              <PriceRow
-                key={ask[0]}
-                price={+ask[0]}
-                size={+ask[1]}
-                total={+ask[1]}
-                type='buy'
-              />
-            ))}
+            {asks.slice(0, 9).map((ask, index, arr) => {
+              const total = arr.slice(index).reduce((acc, curr) => {
+                acc += parseInt(curr[1]);
+                return acc;
+              }, 0);
+              return (
+                <PriceRow
+                  key={ask[0]}
+                  price={+ask[0]}
+                  size={+ask[1]}
+                  total={total}
+                  type='buy'
+                />
+              );
+            })}
           </tbody>
         </table>
       </div>
