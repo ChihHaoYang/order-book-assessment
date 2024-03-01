@@ -195,6 +195,10 @@ export default function Home() {
           <OrderBookHead />
           <tbody className='text-sm'>
             {asks.slice(0, 9).map((ask, index, arr) => {
+              const sum = arr.reduce((acc, curr) => {
+                acc += parseInt(curr[1]);
+                return acc;
+              }, 0);
               const total = arr.slice(index).reduce((acc, curr) => {
                 acc += parseInt(curr[1]);
                 return acc;
@@ -207,11 +211,16 @@ export default function Home() {
                   total={total}
                   type='sell'
                   flash={showedPrice[ask[0]]}
+                  percentage={(+ask[1] / sum) * 100}
                 />
               );
             })}
             <LastPrice price={lastPrice} change={lastPriceChange} />
             {bids.slice(0, 9).map((bid, index, arr) => {
+              const sum = arr.reduce((acc, curr) => {
+                acc += parseInt(curr[1]);
+                return acc;
+              }, 0);
               const total = arr.slice(index).reduce((acc, curr) => {
                 acc += parseInt(curr[1]);
                 return acc;
@@ -224,6 +233,7 @@ export default function Home() {
                   total={total}
                   type='buy'
                   flash={showedPrice[bid[0]]}
+                  percentage={(+bid[1] / sum) * 100}
                 />
               );
             })}

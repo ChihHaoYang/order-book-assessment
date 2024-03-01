@@ -22,7 +22,9 @@ const config: Config = {
         'last-p-same': 'rgba(134, 152, 170, 0.12)',
         'last-p-high': 'rgba(16, 186, 104, 0.12)',
         'last-p-low': 'rgba(255, 90, 90, 0.12)',
-        'book-hover': 'rgba(255, 255, 255, 0.12)'
+        'book-hover': 'rgba(255, 255, 255, 0.12)',
+        'bar-buy': 'rgba(16, 186, 104, 0.12)',
+        'bar-sell': 'rgba(255, 90, 90, 0.12)'
       },
       fill: {
         'last-p-same': '#f0f4f8',

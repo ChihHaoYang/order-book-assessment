@@ -8,12 +8,13 @@ type PriceRowProps = {
   total: number;
   type: 'buy' | 'sell';
   flash: boolean;
+  percentage: number;
 };
 
 const robotoMono = Roboto_Mono({ subsets: ['latin'] });
 
 const PriceRow = React.memo(
-  ({ price, size, total, type, flash }: PriceRowProps) => {
+  ({ price, size, total, type, flash, percentage }: PriceRowProps) => {
     const [flashCellClass, setFlashCellClass] = useState<string>('');
     const prevSize = useRef<number>(size);
     const quoteClass = type === 'buy' ? 'text-quote-buy' : 'text-quote-sell';
@@ -42,9 +43,11 @@ const PriceRow = React.memo(
         : 'animate-red-flash'
       : '';
 
+    const barClass = type === 'buy' ? 'bg-bar-buy' : 'bg-bar-sell';
+
     return (
       <tr
-        className={`my-2 pointer  hover:bg-book-hover ${robotoMono.className} ${trClass}`}
+        className={`relative my-2 pointer  hover:bg-book-hover ${robotoMono.className} ${trClass}`}
       >
         <td className={`${quoteClass}`}>{formatNumber(price, 1)}</td>
         <td className={`text-default text-right ${flashCellClass}`}>
@@ -53,6 +56,10 @@ const PriceRow = React.memo(
         <td colSpan={3} className='text-default text-right'>
           {formatNumber(total, 0)}
         </td>
+        <td
+          className={`absolute h-full right-0 ${barClass}`}
+          style={{ width: `${percentage}%` }}
+        />
       </tr>
     );
   }
