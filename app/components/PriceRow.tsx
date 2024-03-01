@@ -11,15 +11,17 @@ type PriceRowProps = {
 
 const robotoMono = Roboto_Mono({ subsets: ['latin'] });
 
-const PriceRow = ({ price, size, total, type }: PriceRowProps) => {
+const PriceRow = React.memo(({ price, size, total, type }: PriceRowProps) => {
   const quoteClass = type === 'buy' ? 'text-quote-buy' : 'text-quote-sell';
   return (
     <tr className={`my-2 pointer hover:bg-book-hover ${robotoMono.className}`}>
       <td className={`${quoteClass}`}>{formatNumber(price, 1)}</td>
       <td className='text-default text-right'>{formatNumber(size, 0)}</td>
-      <td className='text-default text-right'>{formatNumber(total, 0)}</td>
+      <td colSpan={3} className='text-default text-right'>
+        {formatNumber(total, 0)}
+      </td>
     </tr>
   );
-};
+});
 
 export default PriceRow;
