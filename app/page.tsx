@@ -1,113 +1,182 @@
-import Image from "next/image";
+'use client';
+import { useEffect, useState, useRef } from 'react';
+import PriceRow from './PriceRow';
+import LastPrice from './LastPrice';
+import useWebSocket, { ReadyState } from 'react-use-websocket';
+
+interface SocketResponse {
+  topic: string;
+}
+
+interface OrderBookResponse extends SocketResponse {
+  data: {
+    bids: [string, string][];
+    asks: [string, string][];
+    seqNum: number;
+    prevSeqNum: number;
+    type: string;
+    timestamp: number;
+    symbol: string;
+  };
+}
+
+interface LastPriceResponse extends SocketResponse {
+  data: {
+    price: number;
+    side: 'BUY' | 'SELL';
+    symbol: string;
+    size: number;
+    tradeId: number;
+    timestamp: number;
+  }[];
+}
 
 export default function Home() {
+  const [messageList, setMessageList] = useState<MessageEvent<any>[]>([]);
+  const [bids, setBids] = useState<[string, string][]>([]);
+  const [asks, setAsks] = useState<[string, string][]>([]);
+  const [lastPrice, setLastPrice] = useState<number>(0);
+  const [lastPriceChange, setLastPriceChange] = useState<
+    'high' | 'low' | 'same'
+  >('same');
+
+  const orderBookSocket = useWebSocket('wss://ws.btse.com/ws/oss/futures', {
+    onOpen: () => {
+      console.log('orderbook opened');
+    },
+    onMessage: message => {
+      handleOnMessage(message);
+      setMessageList([...messageList, message]);
+    },
+    shouldReconnect: closeEvent => true
+  });
+
+  const lastPriceSocket = useWebSocket('wss://ws.btse.com/ws/futures', {
+    onOpen: () => {
+      console.log('lastprice opened');
+    },
+    onMessage: message => {
+      handleOnMessage(message);
+      setMessageList([...messageList, message]);
+    },
+    shouldReconnect: closeEvent => true
+  });
+
+  useEffect(() => {
+    const { sendJsonMessage } = orderBookSocket;
+    sendJsonMessage({ op: 'subscribe', args: ['update:BTCPFC_0'] });
+    return () => {
+      sendJsonMessage({ op: 'unsubscribe', args: ['update:BTCPFC_0'] });
+    };
+  }, []);
+
+  useEffect(() => {
+    const { sendJsonMessage } = lastPriceSocket;
+    sendJsonMessage({
+      op: 'subscribe',
+      args: ['tradeHistoryApi:BTCPFC']
+    });
+  }, []);
+
+  function handleOnMessage(message: MessageEvent<any>) {
+    const parsedMessage: SocketResponse = JSON.parse(message.data);
+    const { topic } = parsedMessage;
+    switch (topic) {
+      case 'tradeHistoryApi': {
+        const { data } = parsedMessage as LastPriceResponse;
+        const newPrice = data[0].price;
+        setLastPriceChange(
+          newPrice > lastPrice
+            ? 'high'
+            : newPrice === lastPrice
+            ? 'same'
+            : 'low'
+        );
+        setLastPrice(data[0].price);
+        break;
+      }
+      case 'update:BTCPFC_0': {
+        const { data } = parsedMessage as OrderBookResponse;
+        switch (data.type) {
+          case 'snapshot':
+            setBids(data.bids.slice(0, 9));
+            setAsks(data.asks.slice(0, 9));
+            break;
+          case 'delta':
+            break;
+        }
+        break;
+      }
+    }
+  }
+
+  const getLastPriceClass = () => {
+    switch (lastPriceChange) {
+      case 'same':
+        return 'text-last-p-same bg-last-p-same';
+      case 'low':
+        return 'text-last-p-low bg-last-p-low';
+      case 'high':
+        return 'text-last-p-high bg-last-p-high';
+    }
+  };
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
+    <div className='h-full flex justify-center items-center'>
+      <div className='flex flex-col bg-book w-60 p-2'>
+        <h2 className='text-default font-bold'>Order Book</h2>
+        <table className='border-spacing-1.5 border-separate border-spacing-x-0'>
+          <thead className='text-quote-head text-sm'>
+            <tr>
+              <th className='text-left'>Price (USD)</th>
+              <th className='text-right'>Size</th>
+              <th className='text-right'>Total</th>
+            </tr>
+          </thead>
+          <tbody className='text-sm'>
+            {bids.map(bid => (
+              <PriceRow
+                key={bid[0]}
+                price={+bid[0]}
+                size={+bid[1]}
+                total={+bid[1]}
+                type='sell'
+              />
+            ))}
+            <LastPrice price={lastPrice} className={getLastPriceClass()} />
+            {asks.map(ask => (
+              <PriceRow
+                key={ask[0]}
+                price={+ask[0]}
+                size={+ask[1]}
+                total={+ask[1]}
+                type='buy'
+              />
+            ))}
+            {/* <PriceRow price={21710.5} size={1051} total={26372} type='sell' />
+            <PriceRow price={21710.5} size={1051} total={26372} type='sell' />
+            <PriceRow price={21710.5} size={1051} total={26372} type='sell' />
+            <PriceRow price={21710.5} size={1051} total={26372} type='sell' />
+            <PriceRow price={21710.5} size={1051} total={26372} type='sell' />
+            <PriceRow price={21710.5} size={1051} total={26372} type='sell' />
+            <PriceRow price={21710.5} size={1051} total={26372} type='sell' />
+            <PriceRow price={21710.5} size={1051} total={26372} type='sell' />
+            <tr>
+              <td className='text-default text-center' colSpan={3}>
+                216110.0
+              </td>
+            </tr>
+            <PriceRow price={21710.5} size={1051} total={26372} type='buy' />
+            <PriceRow price={21710.5} size={1051} total={26372} type='buy' />
+            <PriceRow price={21710.5} size={1051} total={26372} type='buy' />
+            <PriceRow price={21710.5} size={1051} total={26372} type='buy' />
+            <PriceRow price={21710.5} size={1051} total={26372} type='buy' />
+            <PriceRow price={21710.5} size={1051} total={26372} type='buy' />
+            <PriceRow price={21710.5} size={1051} total={26372} type='buy' />
+            <PriceRow price={21710.5} size={1051} total={26372} type='buy' /> */}
+          </tbody>
+        </table>
       </div>
-
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-full sm:before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full sm:after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50 text-balance`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+    </div>
   );
 }
