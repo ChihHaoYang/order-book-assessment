@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
-import PriceRow from './PriceRow';
-import LastPrice from './LastPrice';
+import { PriceRow, LastPrice, OrderBookHead } from './components';
 import useWebSocket, { ReadyState } from 'react-use-websocket';
 
 interface SocketResponse {
@@ -126,13 +125,7 @@ export default function Home() {
       <div className='flex flex-col bg-book w-60 p-2'>
         <h2 className='text-default font-bold'>Order Book</h2>
         <table className='border-spacing-1.5 border-separate border-spacing-x-0'>
-          <thead className='text-quote-head text-sm'>
-            <tr>
-              <th className='text-left'>Price (USD)</th>
-              <th className='text-right'>Size</th>
-              <th className='text-right'>Total</th>
-            </tr>
-          </thead>
+          <OrderBookHead />
           <tbody className='text-sm'>
             {bids.map(bid => (
               <PriceRow
@@ -153,27 +146,6 @@ export default function Home() {
                 type='buy'
               />
             ))}
-            {/* <PriceRow price={21710.5} size={1051} total={26372} type='sell' />
-            <PriceRow price={21710.5} size={1051} total={26372} type='sell' />
-            <PriceRow price={21710.5} size={1051} total={26372} type='sell' />
-            <PriceRow price={21710.5} size={1051} total={26372} type='sell' />
-            <PriceRow price={21710.5} size={1051} total={26372} type='sell' />
-            <PriceRow price={21710.5} size={1051} total={26372} type='sell' />
-            <PriceRow price={21710.5} size={1051} total={26372} type='sell' />
-            <PriceRow price={21710.5} size={1051} total={26372} type='sell' />
-            <tr>
-              <td className='text-default text-center' colSpan={3}>
-                216110.0
-              </td>
-            </tr>
-            <PriceRow price={21710.5} size={1051} total={26372} type='buy' />
-            <PriceRow price={21710.5} size={1051} total={26372} type='buy' />
-            <PriceRow price={21710.5} size={1051} total={26372} type='buy' />
-            <PriceRow price={21710.5} size={1051} total={26372} type='buy' />
-            <PriceRow price={21710.5} size={1051} total={26372} type='buy' />
-            <PriceRow price={21710.5} size={1051} total={26372} type='buy' />
-            <PriceRow price={21710.5} size={1051} total={26372} type='buy' />
-            <PriceRow price={21710.5} size={1051} total={26372} type='buy' /> */}
           </tbody>
         </table>
       </div>
