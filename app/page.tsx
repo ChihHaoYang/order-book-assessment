@@ -1,7 +1,9 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
 import { PriceRow, LastPrice, OrderBookHead } from './components';
-import useWebSocket, { ReadyState } from 'react-use-websocket';
+import useWebSocket from 'react-use-websocket';
+
+const ROWS_TO_SHOW = 8;
 
 interface SocketResponse {
   topic: string;
@@ -42,6 +44,8 @@ export default function Home() {
   const [lastPriceChange, setLastPriceChange] = useState<
     'high' | 'low' | 'same'
   >('same');
+  const bidsSum = getSumOfValues(bids);
+  const asksSum = getSumOfValues(asks);
 
   const orderBookSocket = useWebSocket('wss://ws.btse.com/ws/oss/futures', {
     onOpen: () => {
@@ -92,13 +96,43 @@ export default function Home() {
     asks: [string, string][]
   ) {
     const newShowed = { ...showedPrice };
-    bids.slice(0, 9).forEach(e => {
-      newShowed[e[0]] = true;
-    });
-    asks.slice(0, 9).forEach(e => {
+    [
+      ...bids.slice(0, ROWS_TO_SHOW + 1),
+      ...asks.slice(0, ROWS_TO_SHOW + 1)
+    ].forEach(e => {
       newShowed[e[0]] = true;
     });
     setShowedPrice(newShowed);
+  }
+
+  function getSumOfValues(values: [string, string][]) {
+    return values.slice(0, ROWS_TO_SHOW + 1).reduce((acc, curr) => {
+      acc += parseInt(curr[1]);
+      return acc;
+    }, 0);
+  }
+
+  function getUpdatedValues(
+    prev: [string, string][],
+    incoming: [string, string][]
+  ) {
+    let newData = [...prev];
+    for (const delta of incoming) {
+      for (const value of newData) {
+        if (delta[0] === value[0]) {
+          value[1] = delta[1];
+          break;
+        } else if (+delta[0] > +value[0]) {
+          newData.push(delta);
+          break;
+        }
+      }
+    }
+
+    // Remove 0 values and sort
+    newData = newData.filter(e => e[1] !== '0').sort((a, b) => +b[0] - +a[0]);
+
+    return newData;
   }
 
   function handleOnMessage(message: MessageEvent<any>) {
@@ -125,12 +159,12 @@ export default function Home() {
             updateShowedPrice(data.bids, data.asks);
             setBids(data.bids);
             setAsks(data.asks);
-
             break;
           case 'delta':
             if (!seqNum.current) {
               seqNum.current = data.seqNum;
             } else if (seqNum.current !== data.prevSeqNum) {
+              // Resubscribe if seqNum is wrong
               orderBookSocket.sendJsonMessage({
                 op: 'unsubscribe',
                 args: ['update:BTCPFC_0']
@@ -139,52 +173,39 @@ export default function Home() {
                 op: 'subscribe',
                 args: ['update:BTCPFC_0']
               });
-            } else {
-              let newBids = [...bids];
-              let newAsks = [...asks];
-              for (const deltaB of data.bids) {
-                for (const bid of newBids) {
-                  if (deltaB[0] === bid[0]) {
-                    bid[1] = deltaB[1];
-                    break;
-                  } else if (+deltaB[0] > +bid[0]) {
-                    newBids.push(deltaB);
-                    break;
-                  }
-                }
-              }
-              newBids = newBids
-                .filter(e => e[1] !== '0')
-                .sort((a, b) => +b[0] - +a[0]);
-
-              for (const deltaA of data.asks) {
-                for (const ask of newAsks) {
-                  if (deltaA[0] === ask[0]) {
-                    ask[1] = deltaA[1];
-                    break;
-                  } else if (+deltaA[0] > +ask[0]) {
-                    newBids.push(deltaA);
-                    break;
-                  }
-                }
-              }
-              newAsks = newAsks
-                .filter(e => e[1] !== '0')
-                .sort((a, b) => +b[0] - +a[0]);
-
-              setBids(
-                newBids.filter(e => e[1] !== '0').sort((a, b) => +b[0] - +a[0])
-              );
-              setAsks(
-                newAsks.filter(e => e[1] !== '0').sort((a, b) => +b[0] - +a[0])
-              );
-              updateShowedPrice(newBids, newAsks);
+              break;
             }
+            const newBids = getUpdatedValues(bids, data.bids);
+            const newAsks = getUpdatedValues(asks, data.asks);
+            setBids(newBids);
+            setAsks(newAsks);
+            updateShowedPrice(newBids, newAsks);
             break;
         }
         break;
       }
     }
+  }
+
+  function renderRows(type: 'sell' | 'buy') {
+    const data = type === 'sell' ? asks : bids;
+    return data.slice(0, ROWS_TO_SHOW + 1).map((value, index, arr) => {
+      const total = arr.slice(index).reduce((acc, curr) => {
+        acc += parseInt(curr[1]);
+        return acc;
+      }, 0);
+      return (
+        <PriceRow
+          key={value[0]}
+          price={+value[0]}
+          size={+value[1]}
+          total={total}
+          type={type}
+          flash={showedPrice[value[0]]}
+          percentage={(+value[1] / (type === 'sell' ? asksSum : bidsSum)) * 100}
+        />
+      );
+    });
   }
 
   return (
@@ -194,49 +215,9 @@ export default function Home() {
         <table className='border-spacing-1.5 border-separate border-spacing-x-0'>
           <OrderBookHead />
           <tbody className='text-sm'>
-            {asks.slice(0, 9).map((ask, index, arr) => {
-              const sum = arr.reduce((acc, curr) => {
-                acc += parseInt(curr[1]);
-                return acc;
-              }, 0);
-              const total = arr.slice(index).reduce((acc, curr) => {
-                acc += parseInt(curr[1]);
-                return acc;
-              }, 0);
-              return (
-                <PriceRow
-                  key={ask[0]}
-                  price={+ask[0]}
-                  size={+ask[1]}
-                  total={total}
-                  type='sell'
-                  flash={showedPrice[ask[0]]}
-                  percentage={(+ask[1] / sum) * 100}
-                />
-              );
-            })}
+            {renderRows('sell')}
             <LastPrice price={lastPrice} change={lastPriceChange} />
-            {bids.slice(0, 9).map((bid, index, arr) => {
-              const sum = arr.reduce((acc, curr) => {
-                acc += parseInt(curr[1]);
-                return acc;
-              }, 0);
-              const total = arr.slice(index).reduce((acc, curr) => {
-                acc += parseInt(curr[1]);
-                return acc;
-              }, 0);
-              return (
-                <PriceRow
-                  key={bid[0]}
-                  price={+bid[0]}
-                  size={+bid[1]}
-                  total={total}
-                  type='buy'
-                  flash={showedPrice[bid[0]]}
-                  percentage={(+bid[1] / sum) * 100}
-                />
-              );
-            })}
+            {renderRows('buy')}
           </tbody>
         </table>
       </div>
