@@ -18,40 +18,24 @@ const LastPrice = ({ price, change }: LastPriceProps) => {
   }[change];
 
   const renderIcon = () => {
-    switch (change) {
-      case 'high':
-        return (
-          <Image
-            src='/IconGreenArrowDown.svg'
-            className='rotate-180'
-            width={16}
-            height={16}
-            alt='arrow'
-          />
-        );
-      case 'low':
-        return (
-          <Image
-            src='/IconRedArrowDown.svg'
-            width={16}
-            height={16}
-            alt='arrow'
-          />
-        );
-      case 'same':
-        // For elements not shifting
-        return (
-          <Image
-            src='/IconRedArrowDown.svg'
-            width={16}
-            height={16}
-            alt='arrow'
-            className='invisible'
-          />
-        );
-      default:
-        return null;
-    }
+    return (
+      <>
+        <Image
+          src='/IconGreenArrowDown.svg'
+          className={`rotate-180 ${change === 'high' ? '' : 'hidden'}`}
+          width={16}
+          height={16}
+          alt='arrow up'
+        />
+        <Image
+          src='/IconRedArrowDown.svg'
+          className={`${change === 'low' ? '' : 'hidden'}`}
+          width={16}
+          height={16}
+          alt='arrow down'
+        />
+      </>
+    );
   };
 
   return (
