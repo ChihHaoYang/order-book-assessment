@@ -111,17 +111,6 @@ export default function Home() {
     }
   }
 
-  const getLastPriceClass = () => {
-    switch (lastPriceChange) {
-      case 'same':
-        return 'text-last-p-same bg-last-p-same';
-      case 'low':
-        return 'text-last-p-low bg-last-p-low';
-      case 'high':
-        return 'text-last-p-high bg-last-p-high';
-    }
-  };
-
   return (
     <div className='h-full flex justify-center items-center'>
       <div className='flex flex-col bg-book w-60 py-2 px-1'>
@@ -138,7 +127,7 @@ export default function Home() {
                 type='sell'
               />
             ))}
-            <LastPrice price={lastPrice} className={getLastPriceClass()} />
+            <LastPrice price={lastPrice} change={lastPriceChange} />
             {asks.map(ask => (
               <PriceRow
                 key={ask[0]}
