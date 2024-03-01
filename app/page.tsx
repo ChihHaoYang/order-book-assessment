@@ -87,6 +87,20 @@ export default function Home() {
     };
   }, []);
 
+  function updateShowedPrice(
+    bids: [string, string][],
+    asks: [string, string][]
+  ) {
+    const newShowed = { ...showedPrice };
+    bids.slice(0, 9).forEach(e => {
+      newShowed[e[0]] = true;
+    });
+    asks.slice(0, 9).forEach(e => {
+      newShowed[e[0]] = true;
+    });
+    setShowedPrice(newShowed);
+  }
+
   function handleOnMessage(message: MessageEvent<any>) {
     const parsedMessage: SocketResponse = JSON.parse(message.data);
     const { topic } = parsedMessage;
@@ -108,16 +122,7 @@ export default function Home() {
         const { data } = parsedMessage as OrderBookResponse;
         switch (data.type) {
           case 'snapshot':
-            const initialShowed: {
-              [key: string]: boolean;
-            } = [...data.bids.slice(0, 9), ...data.asks.slice(0, 9)].reduce(
-              (acc, current) => {
-                acc[current[0]] = true;
-                return acc;
-              },
-              {} as { [key: string]: boolean }
-            );
-            setShowedPrice(initialShowed);
+            updateShowedPrice(data.bids, data.asks);
             setBids(data.bids);
             setAsks(data.asks);
 
@@ -135,8 +140,8 @@ export default function Home() {
                 args: ['update:BTCPFC_0']
               });
             } else {
-              const newBids = [...bids];
-              const newAsks = [...asks];
+              let newBids = [...bids];
+              let newAsks = [...asks];
               for (const deltaB of data.bids) {
                 for (const bid of newBids) {
                   if (deltaB[0] === bid[0]) {
@@ -148,9 +153,9 @@ export default function Home() {
                   }
                 }
               }
-              setBids(
-                newBids.filter(e => e[1] !== '0').sort((a, b) => +b[0] - +a[0])
-              );
+              newBids = newBids
+                .filter(e => e[1] !== '0')
+                .sort((a, b) => +b[0] - +a[0]);
 
               for (const deltaA of data.asks) {
                 for (const ask of newAsks) {
@@ -163,9 +168,17 @@ export default function Home() {
                   }
                 }
               }
+              newAsks = newAsks
+                .filter(e => e[1] !== '0')
+                .sort((a, b) => +b[0] - +a[0]);
+
               setBids(
+                newBids.filter(e => e[1] !== '0').sort((a, b) => +b[0] - +a[0])
+              );
+              setAsks(
                 newAsks.filter(e => e[1] !== '0').sort((a, b) => +b[0] - +a[0])
               );
+              updateShowedPrice(newBids, newAsks);
             }
             break;
         }
