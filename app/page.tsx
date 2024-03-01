@@ -62,6 +62,7 @@ export default function Home() {
   });
 
   useEffect(() => {
+    // OrderBook Effect
     const { sendJsonMessage } = orderBookSocket;
     sendJsonMessage({ op: 'subscribe', args: ['update:BTCPFC_0'] });
     return () => {
@@ -70,6 +71,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    // Trade History (Last price) Effect
     const { sendJsonMessage } = lastPriceSocket;
     sendJsonMessage({
       op: 'subscribe',
@@ -122,7 +124,7 @@ export default function Home() {
 
   return (
     <div className='h-full flex justify-center items-center'>
-      <div className='flex flex-col bg-book w-60 p-2'>
+      <div className='flex flex-col bg-book w-60 py-2 px-1'>
         <h2 className='text-default font-bold'>Order Book</h2>
         <table className='border-spacing-1.5 border-separate border-spacing-x-0'>
           <OrderBookHead />
