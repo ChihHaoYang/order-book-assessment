@@ -1,3 +1,8 @@
+# BTC price data from BTSE's websocket 
+
+![image](https://github.com/ChihHaoYang/order-book-assessment/assets/5263586/a12da258-c775-491d-a7b1-67626597cf3e)
+
+
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started
